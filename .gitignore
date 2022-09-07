@@ -2,7 +2,6 @@ csv
 data
 png
 pq
-sample
 *.csv
 
 ### C ###
