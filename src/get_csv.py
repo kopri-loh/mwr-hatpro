@@ -15,7 +15,7 @@ from context import add_path
 add_path(Path(".").resolve())
 
 try:
-    from plib.io import unpack
+    import plib.io
 except Exception:
     raise Exception("Issue with dynamic import")
 
@@ -40,6 +40,8 @@ def get_ang(ang):
 
 
 def get_df(item) -> pd.DataFrame:
+    unpack = plib.io.unpack
+
     with open(item, "rb") as f:
         bin = f.read()
 
@@ -104,6 +106,50 @@ def get_df(item) -> pd.DataFrame:
                 _row = [t.date(), t.time(), rf]
                 _row.extend(l_temp)
                 rec.loc[i] = _row
+        elif b_type == 117343673:  # HPC
+            cols = ["date", "time", "type"]
+
+            n_alt = unpack(bin, 24)[0]
+            pos_0 = 28
+
+            for _ in range(n_alt):
+                cols.append(str(unpack(bin, pos_0)[0]))
+                pos_0 += 4
+
+            # Dump data into Pandas Dataframe
+            rec = pd.DataFrame(columns=cols)
+
+            for i in range(n_rec):
+                t = get_dt(unpack(bin, pos_0, type="i")[0])
+                pos_0 += 4
+                rf = unpack(bin, pos_0, "b")[0]
+                pos_0 += 1
+
+                ah = []
+                for _ in range(n_alt):
+                    ah.append(unpack(bin, pos_0, "f")[0])
+                    pos_0 += 4
+
+                _row = [t.date(), t.time(), "AHP"]
+                _row.extend(ah)
+                rec.loc[i] = _row
+
+            # Skip RHMin and RHmax
+            pos_0 += 8
+            for i in range(n_rec):
+                t = get_dt(unpack(bin, pos_0, type="i")[0])
+                pos_0 += 4
+                rf = unpack(bin, pos_0, "b")[0]
+                pos_0 += 1
+
+                rh = []
+                for _ in range(n_alt):
+                    rh.append(unpack(bin, pos_0, "f")[0])
+                    pos_0 += 4
+
+                _row = [t.date(), t.time(), "RHP"]
+                _row.extend(rh)
+                rec.loc[n_rec + i] = _row
         else:
             raise TypeError("Unrecognized Input Type")
 
@@ -125,21 +171,47 @@ def wrapper(p_src, to):
             raise ValueError("Not a valid directory path")
         p_dst = to
 
-    for var in ["IWV", "TPC"]:
-        l_var = sorted(p_src.rglob(f"*[0-9].{var}"))
+    ret = plib.io.get_ret()
 
-        if len(l_var) == 0:
-            print("No record found")
+    for key in ret.keys():
+        if key == 'HPC':
+            l_key = sorted(p_src.rglob(f"*[0-9].{key}"))
+
+            if len(l_key) == 0:
+                print("No record found")
+            else:
+                df = pd.DataFrame()
+
+                for item in (pbar := tqdm(l_key)):
+                    pbar.set_description(f"Processing {item}")
+
+                    df = pd.concat([df, get_df(item)])
+
+                df = df.sort_values(by="time").reset_index(drop=True)
+
+                for subkey in ['AHP', 'RHP']:
+                    _df = df[df.type == subkey]
+                    _df = _df.drop(columns='type')
+
+                    f_path = f"{p_dst}/{df.date[0]}-{subkey}.csv"
+                    plib.io.to_csv(_df, f_path, ret[key][subkey])
         else:
-            df = pd.DataFrame()
+            l_key = sorted(p_src.rglob(f"*[0-9].{key}"))
 
-            for item in (pbar := tqdm(l_var)):
-                pbar.set_description(f"Processing {item}")
+            if len(l_key) == 0:
+                print("No record found")
+            else:
+                df = pd.DataFrame()
 
-                df = pd.concat([df, get_df(item)])
+                for item in (pbar := tqdm(l_key)):
+                    pbar.set_description(f"Processing {item}")
 
-            df = df.sort_values(by="time").reset_index(drop=True)
-            df.to_csv(f"{p_dst}/{df.date[0]}-{var}.csv")
+                    df = pd.concat([df, get_df(item)])
+
+                df = df.sort_values(by="time").reset_index(drop=True)
+
+                f_path = f"{p_dst}/{df.date[0]}-{key}.csv"
+                plib.io.to_csv(df, f_path, ret[key])
 
 
 if __name__ == "__main__":
