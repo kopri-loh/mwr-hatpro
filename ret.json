@@ -1,0 +1,8 @@
+{
+    "IWV": "Integrated Water Vapour [kg/m^2]",
+    "TPC": "Temperature Profile [K]",
+    "HPC": {
+        "AHP": "Absolute Humidity Profile [g/m^3]",
+        "RHP": "Relative Humidity Profile [%]"
+    }
+}
