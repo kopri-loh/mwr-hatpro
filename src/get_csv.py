@@ -15,7 +15,7 @@ from context import add_path
 add_path(Path(".").resolve())
 
 try:
-    import plib.io
+    import lib.io
 except Exception:
     raise Exception("Issue with dynamic import")
 
@@ -40,7 +40,7 @@ def get_ang(ang):
 
 
 def get_df(item) -> pd.DataFrame:
-    unpack = plib.io.unpack
+    unpack = lib.io.unpack
 
     with open(item, "rb") as f:
         bin = f.read()
@@ -171,7 +171,7 @@ def wrapper(p_src, to):
             raise ValueError("Not a valid directory path")
         p_dst = to
 
-    ret = plib.io.get_ret()
+    ret = lib.io.get_ret()
 
     for key in ret.keys():
         if key == 'HPC':
@@ -194,7 +194,7 @@ def wrapper(p_src, to):
                     _df = _df.drop(columns='type')
 
                     f_path = f"{p_dst}/{df.date[0]}-{subkey}.csv"
-                    plib.io.to_csv(_df, f_path, ret[key][subkey])
+                    lib.io.to_csv(_df, f_path, ret[key][subkey])
         else:
             l_key = sorted(p_src.rglob(f"*[0-9].{key}"))
 
@@ -211,7 +211,7 @@ def wrapper(p_src, to):
                 df = df.sort_values(by="time").reset_index(drop=True)
 
                 f_path = f"{p_dst}/{df.date[0]}-{key}.csv"
-                plib.io.to_csv(df, f_path, ret[key])
+                lib.io.to_csv(df, f_path, ret[key])
 
 
 if __name__ == "__main__":
